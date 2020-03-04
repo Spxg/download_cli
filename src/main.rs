@@ -1,14 +1,18 @@
 mod range_iter;
 mod opt;
 
+use self::opt::Opt;
+use crate::range_iter::RangeIter;
+use tokio::stream::StreamExt;
 use reqwest::header::{CONTENT_LENGTH, RANGE, ACCEPT_RANGES};
 use std::str::FromStr;
-use crate::range_iter::RangeIter;
 use std::fs::File;
-use std::io::{Write, Read, stdin};
+use std::io::stdin;
 use structopt::StructOpt;
-use self::opt::Opt;
 use std::process::exit;
+use std::option::Option::Some;
+use positioned_io_preview::WriteAt;
+use std::sync::{Arc, Mutex};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -18,12 +22,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let force = opt.force;
 
     let file_name = url.split('/').rev().next().unwrap();
-    let mut thread = u64::from_str(thread.split('j').rev().next().unwrap())?;
+    let mut thread_count = u64::from_str(thread.split('j').rev().next().unwrap())?;
 
     let client = reqwest::Client::new();
     let info = client.head(url.trim()).send().await?;
 
     let length = info.headers().get(CONTENT_LENGTH).unwrap();
+    let length = u64::from_str(length.to_str()?)?;
+
     let accept_range = match info.headers().get(ACCEPT_RANGES) {
         Some(i) => {
             if i.to_str().unwrap().eq("none") { false } else { true }
@@ -31,14 +37,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => { false }
     };
 
-    let length = u64::from_str(length.to_str()?)?;
-
-    let mut v = Vec::new();
-    let mut num = 0;
-
-    if !accept_range && thread > 1 && !force {
+    if !accept_range && thread_count > 1 && !force {
         println!("the url server may not accept range, \
-        if force, you can start program with '-f' command");
+        if force continue, you can start program with '-f' command");
         println!("1) force continue  2) use single thread to download");
         println!("3) exit");
 
@@ -47,50 +48,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match i32::from_str(input.trim()) {
             Ok(i) => {
-                if i == 1 {} else if i == 2 { thread = 1; } else { exit(0) };
+                if i == 1 {} else if i == 2 { thread_count = 1; } else { exit(0) };
             }
             Err(_) => exit(1)
         }
     }
 
     println!("Downloading, size {}", length);
-    for range in RangeIter::new(0, length - 1, length / thread) {
+    let mut count = 1;
+    let file = Arc::new(Mutex::new(File::create(file_name)?));
+    let mut threads = Vec::new();
+
+    for (range, start) in RangeIter::new(0, length - 1, length / thread_count) {
         let copy_url = url.as_str().to_string();
+        let clone_file = file.clone();
+
         let thread = tokio::task::spawn(async move {
-            println!("thread {} start at {:?}", num, range);
-            let file_name = format!("temp{}", num);
-            let mut file = File::create(file_name).unwrap();
-            let response = reqwest::Client::new().get(&copy_url).header(RANGE, range)
+            let mut start_at = start;
+            println!("thread {} start at {:?}", count, range);
+
+            let mut stream = reqwest::Client::new().get(&copy_url)
+                .header(RANGE, range)
                 .send().await.unwrap()
-                .bytes().await.unwrap();
-            file.write(&response).unwrap();
-            println!("thread {} download successfully", num);
+                .bytes_stream();
+
+            while let Some(item) = stream.next().await {
+                let byte = item.unwrap();
+                clone_file.lock().unwrap().write_at(start_at, &byte).unwrap();
+                start_at += byte.len() as u64;
+            }
+
+            println!("thread {} download successfully", count);
         });
 
-        v.push(thread);
-        num += 1;
+        threads.push(thread);
+        count += 1;
     }
 
-    for i in v {
-        i.await?;
+    for thread in threads {
+        thread.await?;
     }
 
-    println!();
-    let mut file = File::create(file_name)?;
-    println!("start merge");
-
-    for i in 0..num {
-        let mut buf = Vec::new();
-        let path = format!("temp{}", i);
-        File::open(path)?.read_to_end(&mut buf)?;
-        file.write(&buf)?;
-        println!("merge {} successfully", i + 1);
-    }
-
-    for i in 0..num {
-        let path = format!("temp{}", i);
-        std::fs::remove_file(path)?;
-    }
     println!();
     println!("file download successfully");
     Ok(())
