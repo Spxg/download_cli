@@ -5,7 +5,7 @@ use structopt_derive::*;
 pub struct Opt {
     #[structopt(help = "Url")]
     pub url: String,
-    #[structopt(help = "Thread Number", short, long)]
+    #[structopt(help = "Thread Number", short)]
     pub job: String,
     #[structopt(help = "Force Download", short)]
     pub force: bool,

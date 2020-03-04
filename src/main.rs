@@ -10,7 +10,6 @@ use std::fs::File;
 use std::io::stdin;
 use structopt::StructOpt;
 use std::process::exit;
-use std::option::Option::Some;
 use positioned_io_preview::WriteAt;
 use std::sync::{Arc, Mutex};
 
