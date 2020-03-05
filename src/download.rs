@@ -120,7 +120,8 @@ impl Info {
             _ => { false }
         };
 
-        if !accept_range && self.thread_count > 1 && !self.force && code == 206 {
+        let pass = self.thread_count == 1 && self.force;
+        if !accept_range && !pass || code == 206 && !pass {
             println!("the url server may not accept range or limit the range, \
         if force continue, you can start program with '-f' command");
             println!("1) force continue  2) use single thread to download");
