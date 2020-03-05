@@ -120,7 +120,7 @@ impl Info {
             _ => { false }
         };
 
-        let pass = self.thread_count == 1 && self.force;
+        let pass = self.thread_count == 1 || self.force;
         if !accept_range && !pass || code == 206 && !pass {
             println!("the url server may not accept range or limit the range, \
         if force continue, you can start program with '-f' command");
