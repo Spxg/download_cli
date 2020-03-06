@@ -1,20 +1,47 @@
-use crate::resume::{FileInfo, UnfinishFile, UnfinishFiles};
+extern crate serde_json;
+extern crate serde_derive;
+extern crate serde;
 
-use std::path::Path;
+use serde_derive::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::Read;
 use positioned_io_preview::WriteAt;
 use std::sync::{Arc, Mutex};
 use std::borrow::BorrowMut;
 
+#[derive(Serialize, Deserialize)]
+pub struct UnfinishFiles {
+    pub files: Vec<UnfinishFile>
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UnfinishFile {
+    pub file: FileInfo,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct FileInfo {
+    pub name: String,
+    pub size: u64,
+    pub break_point: Vec<BreakPoint>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BreakPoint {
+    pub start: u64,
+    pub end: u64,
+}
+
 pub struct Json {
-    pub path: String,
+    pub path: PathBuf
 }
 
 impl Json {
-    pub fn new(path: &str) -> Self {
+    pub fn new(mut path: PathBuf) -> Self {
+        path.push("unfinish.json");
         Json {
-            path: path.to_string(),
+            path
         }
     }
 

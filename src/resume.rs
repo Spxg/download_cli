@@ -1,81 +1,68 @@
-extern crate serde_json;
-extern crate serde_derive;
-extern crate serde;
+use crate::task::Task;
+use crate::unfinish_json::{Json, FileInfo};
 
-use crate::thread::Thread;
-use crate::unfinish_json::Json;
-
-use serde_derive::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::fs::OpenOptions;
 use std::sync::atomic::{Ordering, AtomicBool, AtomicUsize};
-
-
-#[derive(Serialize, Deserialize)]
-pub struct UnfinishFiles {
-    pub files: Vec<UnfinishFile>
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct UnfinishFile {
-    pub file: FileInfo,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct FileInfo {
-    pub name: String,
-    pub size: u64,
-    pub break_point: Vec<BreakPoint>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct BreakPoint {
-    pub start: u64,
-    pub end: u64,
-}
+use std::path::PathBuf;
+use indicatif::MultiProgress;
 
 impl FileInfo {
-    pub async fn resume_download(&mut self, url: &String) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn resume_from_breakpoint(&mut self, url: &String, mut path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        path.push(&self.name);
         let file = Arc::new(Mutex::new(OpenOptions::new().write(true)
-            .open(&self.name).unwrap()));
+            .open(&path).unwrap()));
         let file_info = Arc::new(Mutex::new(FileInfo {
             name: self.name.as_str().to_string(),
             size: self.size,
             break_point: Vec::new(),
         }));
         let finish_count = Arc::new(AtomicUsize::new(0));
-        let running = Arc::new(AtomicBool::new(true));
-        let msg = running.clone();
+        let ctrl_c_msg = Arc::new(AtomicBool::new(true));
+        let clone_ctrl_c_msg = ctrl_c_msg.clone();
+        let start_msg = Arc::new(AtomicBool::new(false));
 
         println!("Continue Download...");
-        let mut thread = Thread::new(url.as_str().to_string(),
-                                     file.clone(),
-                                     running.clone(),
-                                     file_info.clone());
+        let mut task = Task::new(url.as_str().to_string(),
+                                 file.clone(),
+                                 ctrl_c_msg.clone(),
+                                 start_msg.clone(),
+                                 file_info.clone());
 
         ctrlc::set_handler(move || {
-            msg.store(false, Ordering::SeqCst);
+            clone_ctrl_c_msg.store(false, Ordering::SeqCst);
         }).expect("Error setting Ctrl-C handler");
 
-        let mut threads = Vec::new();
+        let mut tasks = Vec::new();
+        let mut pbs = Vec::new();
         for point in &self.break_point {
             let buffer_size = point.end - point.start + 1;
-            threads = thread.init(point.start,
-                                  point.end,
-                                  buffer_size,
-                                  false,
-                                  finish_count.clone()).await;
+            let (mut task, mut pb) = task.init(point.start,
+                                           point.end,
+                                           buffer_size,
+                                           false,
+                                           finish_count.clone()).await;
+            tasks.append(&mut task);
+            pbs.append(&mut pb);
         }
 
-        for thread in threads {
-            thread.await?;
+        let m = MultiProgress::new();
+        for pb in pbs {
+            m.add(pb);
+        }
+        m.join().unwrap();
+
+        for task in tasks {
+            task.await?;
         }
 
         loop {
             if finish_count.load(Ordering::SeqCst) == self.break_point.len() {
-                let json = Json::new("unfinish.json");
+                let mut path = path.clone();
+                path.pop();
+                let json = Json::new(path);
                 json.delete_earlier(&file_info.lock().unwrap().name);
-                if !running.load(Ordering::SeqCst) {
+                if !ctrl_c_msg.load(Ordering::SeqCst) {
                     json.save_point(file_info.clone());
                 } else {
                     println!("file download successfully");
@@ -83,6 +70,7 @@ impl FileInfo {
                 break;
             }
         }
+
         Ok(())
     }
 }
