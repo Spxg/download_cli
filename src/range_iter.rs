@@ -4,16 +4,20 @@ pub struct RangeIter {
     start: u64,
     end: u64,
     buffer_size: u64,
-    check: bool,
+    task_count: u64,
+    now_at: u64,
 }
 
 impl RangeIter {
-    pub fn new(start: u64, end: u64, buffer_size: u64, check: bool) -> Self {
+    pub fn new(start: u64, end: u64, task_count: u64) -> Self {
+        let now_at = 0;
+        let buffer_size = (end - start) / task_count;
         RangeIter {
             start,
             end,
             buffer_size,
-            check,
+            task_count,
+            now_at,
         }
     }
 }
@@ -21,16 +25,15 @@ impl RangeIter {
 impl Iterator for RangeIter {
     type Item = (HeaderValue, u64, u64);
     fn next(&mut self) -> Option<Self::Item> {
-        if self.start > self.end {
+        if self.now_at >= self.task_count {
             None
         } else {
             let prev_start = self.start;
-
-            if !self.check && self.end - self.start > self.buffer_size && self.end - self.start < 2 * self.buffer_size {
-                self.start = self.end + 1;
+            self.now_at += 1;
+            if self.now_at == self.task_count {
                 Some((HeaderValue::from_str(&format!("bytes={}-{}", prev_start, self.end)).unwrap(), prev_start, self.end))
             } else {
-                self.start += std::cmp::min(self.buffer_size as u64, self.end - self.start + 1);
+                self.start += self.buffer_size as u64;
                 Some((HeaderValue::from_str(&format!("bytes={}-{}", prev_start, self.start - 1)).unwrap(), prev_start, self.start - 1))
             }
         }

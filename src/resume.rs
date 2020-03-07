@@ -36,12 +36,10 @@ impl FileInfo {
         let mut tasks = Vec::new();
         let mut pbs = Vec::new();
         for point in &self.break_point {
-            let buffer_size = point.end - point.start + 1;
             let (mut task, mut pb) = task.init(point.start,
-                                           point.end,
-                                           buffer_size,
-                                           false,
-                                           finish_count.clone()).await;
+                                               point.end,
+                                               1,
+                                               finish_count.clone()).await;
             tasks.append(&mut task);
             pbs.append(&mut pb);
         }

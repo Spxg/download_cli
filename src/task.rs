@@ -36,11 +36,11 @@ impl Task {
         }
     }
 
-    pub async fn init(&mut self, start: u64, end: u64, buffer_size: u64, check: bool, finish_count: Arc<AtomicUsize>) -> (Vec<JoinHandle<()>>, Vec<ProgressBar>) {
+    pub async fn init(&mut self, start: u64, end: u64, task_count: u64, finish_count: Arc<AtomicUsize>) -> (Vec<JoinHandle<()>>, Vec<ProgressBar>) {
         let mut tasks = Vec::new();
         let mut pbs = Vec::new();
 
-        for (range, start, end) in RangeIter::new(start, end, buffer_size, check) {
+        for (range, start, end) in RangeIter::new(start, end, task_count) {
             let (tx, rx) = mpsc::channel();
             let copy_url = self.url.as_str().to_string();
             let clone_file = self.file.clone();

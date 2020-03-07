@@ -126,9 +126,8 @@ impl Info {
                                  file_info.clone());
 
         let end = self.length - 1;
-        let buffer_size = self.length / self.task_count;
-        let (tasks, pbs) = task.init(0, end, buffer_size,
-                              end / buffer_size < self.task_count,
+        let (tasks, pbs) = task.init(0, end,
+                              self.task_count,
                               finish_count.clone()).await;
 
         let m = MultiProgress::new();
