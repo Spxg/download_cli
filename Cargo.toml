@@ -1,6 +1,6 @@
 [package]
 name = "download_cli"
-version = "0.2.0"
+version = "0.2.5"
 authors = ["Spxg <spxg@spxg.me>"]
 edition = "2018"
 

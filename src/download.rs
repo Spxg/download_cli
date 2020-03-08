@@ -120,6 +120,7 @@ impl Info {
             name: self.file_name.as_str().to_string(),
             size: self.length,
             target: self.target.clone(),
+            url: self.url.as_str().to_string(),
             break_point: Vec::new(),
         }));
         let finish_count = Arc::new(AtomicUsize::new(0));

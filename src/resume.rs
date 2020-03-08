@@ -4,18 +4,18 @@ use crate::unfinish_json::{Json, FileInfo};
 use std::sync::{Arc, Mutex};
 use std::fs::OpenOptions;
 use std::sync::atomic::{Ordering, AtomicBool, AtomicUsize};
-use std::path::PathBuf;
 use indicatif::MultiProgress;
 
 impl FileInfo {
-    pub async fn resume_from_breakpoint(&mut self, url: &String, path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Download to {:?}", path);
+    pub async fn resume_from_breakpoint(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        println!("Download to {:?}", self.target);
         let file = Arc::new(Mutex::new(OpenOptions::new().write(true)
-            .open(&path).unwrap()));
+            .open(&self.target).unwrap()));
         let file_info = Arc::new(Mutex::new(FileInfo {
             name: self.name.as_str().to_string(),
             size: self.size,
             target: self.target.clone(),
+            url: self.url.as_str().to_string(),
             break_point: Vec::new(),
         }));
         let finish_count = Arc::new(AtomicUsize::new(0));
@@ -24,7 +24,7 @@ impl FileInfo {
         let start_msg = Arc::new(AtomicBool::new(false));
 
         println!("Continue Download...");
-        let mut task = Task::new(url.as_str().to_string(),
+        let mut task = Task::new(self.url.as_str().to_string(),
                                  file.clone(),
                                  ctrl_c_msg.clone(),
                                  start_msg.clone(),

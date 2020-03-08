@@ -25,6 +25,7 @@ pub struct FileInfo {
     pub name: String,
     pub size: u64,
     pub target: PathBuf,
+    pub url: String,
     pub break_point: Vec<BreakPoint>,
 }
 
@@ -59,6 +60,7 @@ impl Json {
         let name = file_info.name.as_str().to_string();
         let size = file_info.size;
         let target = file_info.target.clone();
+        let url = file_info.url.as_str().to_string();
 
         let mut break_point = Vec::new();
         break_point.append(file_info.break_point.borrow_mut());
@@ -67,6 +69,7 @@ impl Json {
             name,
             size,
             target,
+            url,
             break_point,
         };
 
@@ -116,5 +119,9 @@ impl Json {
             }
         }
         None
+    }
+
+    pub fn exist(&self) -> bool {
+        self.path.exists()
     }
 }
