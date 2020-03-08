@@ -17,6 +17,7 @@ pub struct Info {
     file_name: String,
     task_count: u64,
     force: bool,
+    cover: bool,
     length: u64,
     target_dir: PathBuf,
     target: PathBuf,
@@ -26,6 +27,7 @@ pub struct InfoBuilder {
     url: String,
     file_name: String,
     task_count: u64,
+    cover: bool,
     force: bool,
     length: u64,
     target_dir: PathBuf,
@@ -60,6 +62,13 @@ impl InfoBuilder {
         }
     }
 
+    pub fn cover(self, cover: bool) -> InfoBuilder {
+        InfoBuilder {
+            cover,
+            ..self
+        }
+    }
+
     pub fn length(self, length: u64) -> InfoBuilder {
         InfoBuilder {
             length,
@@ -82,6 +91,7 @@ impl InfoBuilder {
             file_name: self.file_name,
             task_count: self.task_count,
             force: self.force,
+            cover: self.cover,
             length: self.length,
             target_dir: self.target_dir,
             target,
@@ -96,6 +106,7 @@ impl Info {
             file_name: String::default(),
             task_count: 0,
             force: false,
+            cover: false,
             length: 0,
             target_dir: PathBuf::default(),
         }
@@ -103,10 +114,12 @@ impl Info {
 
     pub async fn start_download(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.check().await.unwrap();
+        println!("Download to {:?}", self.target);
         let file = Arc::new(Mutex::new(File::create(&self.target)?));
         let file_info = Arc::new(Mutex::new(FileInfo {
             name: self.file_name.as_str().to_string(),
             size: self.length,
+            target: self.target.clone(),
             break_point: Vec::new(),
         }));
         let finish_count = Arc::new(AtomicUsize::new(0));
@@ -142,7 +155,9 @@ impl Info {
 
         loop {
             if finish_count.load(Ordering::SeqCst) == self.task_count as usize {
-                let json = Json::new(self.target_dir.clone());
+                let mut exe_dir  = std::env::current_exe().unwrap();
+                exe_dir.pop();
+                let json = Json::new(exe_dir);
                 if !ctrl_c_msg.load(Ordering::SeqCst) {
                     json.save_point(file_info);
                 } else {
@@ -211,8 +226,8 @@ impl Info {
             }
         }
 
-        if self.target.exists() {
-            println!("the file is exists, rename the file you download or cover previous file");
+        if self.target.exists() && !self.cover {
+            println!("the file is exist, rename the file you download or cover previous file");
             println!("1) customize name         2) rename like 'file_name(number)'");
             println!("3) cover previous file");
 

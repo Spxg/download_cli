@@ -14,4 +14,6 @@ pub struct Opt {
     pub job: u64,
     #[structopt(help = "Force download", short = "f", long = "focre")]
     pub is_force: bool,
+    #[structopt(help = "Cover file", short = "c", long = "cover")]
+    pub is_cover: bool,
 }

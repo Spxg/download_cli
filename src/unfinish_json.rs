@@ -24,6 +24,7 @@ pub struct UnfinishFile {
 pub struct FileInfo {
     pub name: String,
     pub size: u64,
+    pub target: PathBuf,
     pub break_point: Vec<BreakPoint>,
 }
 
@@ -57,6 +58,7 @@ impl Json {
         let mut file_info = file_info.lock().unwrap();
         let name = file_info.name.as_str().to_string();
         let size = file_info.size;
+        let target = file_info.target.clone();
 
         let mut break_point = Vec::new();
         break_point.append(file_info.break_point.borrow_mut());
@@ -64,6 +66,7 @@ impl Json {
         let file_info = FileInfo {
             name,
             size,
+            target,
             break_point,
         };
 
@@ -93,22 +96,22 @@ impl Json {
         json.write_at(0, info.as_bytes()).unwrap();
     }
 
-    pub fn delete_earlier(&self, name: &str) {
+    pub fn delete_earlier(&self, target: PathBuf) {
         let mut unfinish_files = self.get_info();
         if unfinish_files.files.len() == 1 {
             std::fs::remove_file(&self.path).unwrap();
         } else {
-            let i = self.search(name);
+            let i = self.search(target);
             unfinish_files.files.remove(i.unwrap());
             self.write(&unfinish_files);
         }
     }
 
-    fn search(&self, name: &str) -> Option<usize> {
+    fn search(&self, target: PathBuf) -> Option<usize> {
         let unfinish_files = self.get_info();
 
         for (i, value) in unfinish_files.files.iter().enumerate() {
-            if value.file.name.eq(name) {
+            if value.file.target.eq(&target) {
                 return Some(i);
             }
         }

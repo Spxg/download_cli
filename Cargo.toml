@@ -1,5 +1,5 @@
 [package]
-name = "thread_download"
+name = "download_cli"
 version = "0.2.0"
 authors = ["Spxg <spxg@spxg.me>"]
 edition = "2018"

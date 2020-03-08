@@ -8,13 +8,14 @@ use std::path::PathBuf;
 use indicatif::MultiProgress;
 
 impl FileInfo {
-    pub async fn resume_from_breakpoint(&mut self, url: &String, mut path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-        path.push(&self.name);
+    pub async fn resume_from_breakpoint(&mut self, url: &String, path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+        println!("Download to {:?}", path);
         let file = Arc::new(Mutex::new(OpenOptions::new().write(true)
             .open(&path).unwrap()));
         let file_info = Arc::new(Mutex::new(FileInfo {
             name: self.name.as_str().to_string(),
             size: self.size,
+            target: self.target.clone(),
             break_point: Vec::new(),
         }));
         let finish_count = Arc::new(AtomicUsize::new(0));
@@ -56,10 +57,10 @@ impl FileInfo {
 
         loop {
             if finish_count.load(Ordering::SeqCst) == self.break_point.len() {
-                let mut path = path.clone();
-                path.pop();
-                let json = Json::new(path);
-                json.delete_earlier(&file_info.lock().unwrap().name);
+                let mut exe_dir  = std::env::current_exe().unwrap();
+                exe_dir.pop();
+                let json = Json::new(exe_dir);
+                json.delete_earlier(file_info.lock().unwrap().target.clone());
                 if !ctrl_c_msg.load(Ordering::SeqCst) {
                     json.save_point(file_info.clone());
                 } else {

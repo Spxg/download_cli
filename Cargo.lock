@@ -159,6 +159,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "download_cli"
+version = "0.2.0"
+dependencies = [
+ "ctrlc",
+ "indicatif",
+ "positioned-io-preview",
+ "reqwest",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "structopt",
+ "structopt-derive",
+ "tokio",
+]
+
+[[package]]
 name = "dtoa"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1056,22 +1072,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
-]
-
-[[package]]
-name = "thread_download"
-version = "0.2.0"
-dependencies = [
- "ctrlc",
- "indicatif",
- "positioned-io-preview",
- "reqwest",
- "serde",
- "serde_derive",
- "serde_json",
- "structopt",
- "structopt-derive",
- "tokio",
 ]
 
 [[package]]
