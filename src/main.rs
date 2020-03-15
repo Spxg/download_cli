@@ -8,11 +8,11 @@ mod progress_show;
 
 use crate::download::Info;
 use crate::unfinish_json::{Json, UnfinishFiles};
+use crate::opt::Command;
 
 use self::opt::Opt;
 use structopt::StructOpt;
 use std::path::Path;
-use crate::opt::Command;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
